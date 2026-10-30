@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/bjb_helpdesk_db
+    url: jdbc:postgresql://localhost:5432/db-mini-helpdesk
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
   jpa:

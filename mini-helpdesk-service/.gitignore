@@ -7,3 +7,6 @@ target/
 *.iml
 .vscode/
 .env
+application-local.yml
+*.log
+.DS_Store

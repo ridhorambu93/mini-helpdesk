@@ -1,20 +1,17 @@
-# 📌 Project Context: EMR App
+# 📌 Project Context: Mini Helpdesk
 
 ---
 
 ## 🏛️ Domain & Tujuan
 
-**Electronic Medical Record (EMR) — Sistem Informasi Klinik/Rumah Sakit**
+**Mini Helpdesk — Sistem Tiket Internal BJB**
 
-Sistem fullstack untuk manajemen rekam medis, antrian, farmasi, laboratorium, billing, dan integrasi BPJS.
+Sistem fullstack untuk manajemen tiket helpdesk internal, autentikasi user, dan pengelolaan laporan/permintaan.
 
 **Fungsi Utama:**
-- Pendaftaran & manajemen pasien
-- Antrian & kunjungan
-- Rekam medis (SOAP, vital sign, triage)
-- Farmasi, laboratorium, radiologi
-- Billing & pembayaran
-- Integrasi BPJS / SatuSehat
+- Autentikasi user (login, register, refresh token)
+- Manajemen tiket helpdesk
+- Role-based access control
 
 ---
 
@@ -22,160 +19,95 @@ Sistem fullstack untuk manajemen rekam medis, antrian, farmasi, laboratorium, bi
 
 | Layer | Teknologi | Folder |
 |-------|-----------|--------|
-| Frontend | React 19 + Vite + TailwindCSS | `web-emr/` |
-| State Management | React Context API | `web-emr/src/context/` |
-| HTTP Client | Axios | `web-emr/src/api/` |
-| Backend | Java 21 + Spring Boot 3.3 | `service-emr-api/` |
-| ORM | Spring Data JPA + Hibernate | `service-emr-api/src/.../repository/` |
-| Database | PostgreSQL | port 5432 |
-| Auth | Spring Security + JWT (stateless) | `service-emr-api/src/.../config/` |
-
-**Referensi lama (jangan dimodifikasi):**
-- `be/` → Node.js + Express (referensi struktur modul)
-- `fe/` → React + Zustand (referensi halaman & komponen)
+| Frontend | Svelte 4 + Vite + TailwindCSS | `mini-helpdesk-web/` |
+| HTTP Client | Axios | `mini-helpdesk-web/src/api/` |
+| Backend | Java 21 + Spring Boot 3.3 | `mini-helpdesk-service/` |
+| ORM | Spring Data JPA + Hibernate | `mini-helpdesk-service/src/.../repository/` |
+| Database | PostgreSQL | port 5432, db: `bjb_helpdesk_db` |
+| Auth | Spring Security + JWT stateless (access + refresh token) | `mini-helpdesk-service/src/.../security/` |
 
 ---
 
 ## 📁 Struktur Folder
 
-### Backend (`service-emr-api/`)
+### Backend (`mini-helpdesk-service/`)
 
 ```
-src/main/java/com/emr/api/
-├── config/             → SecurityConfig, JwtConfig, CorsConfig
+src/main/java/com/bjb/helpdesk/
+├── config/             → SecurityConfig
 ├── controller/         → @RestController per modul
-│   └── emr/            → PatientController, VisitController, dll
 ├── dto/
 │   ├── ApiResponse.java → wrapper { success, message, data }
-│   ├── request/         → DTO input
-│   └── response/        → DTO output
-├── exception/          → GlobalExceptionHandler, custom exceptions
-├── model/              → @Entity JPA
-├── repository/         → @Repository extends JpaRepository
-└── service/            → @Service business logic
-    └── emr/
+│   ├── request/         → LoginRequest, RegisterRequest, RefreshTokenRequest
+│   └── response/        → AuthResponse
+├── exception/          → GlobalExceptionHandler
+├── model/              → User, RefreshToken
+├── repository/         → UserRepository, RefreshTokenRepository
+├── security/           → JwtAuthFilter, JwtService
+├── service/            → AuthService
+└── HelpdeskApplication.java
 ```
 
-### Frontend (`web-emr/`)
+### Frontend (`mini-helpdesk-web/`)
 
 ```
 src/
 ├── api/                → axios instance + fungsi per domain
-│   ├── axios.js        → base config, interceptors, token injection
-│   └── emr/            → patientApi.js, visitApi.js, dll
-├── components/
-│   ├── ui/             → Button, Input, Modal, Table, Badge, dll
-│   └── shared/         → komponen domain-specific reusable
-├── context/
-│   ├── AuthContext.jsx → user, token, login(), logout()
-│   ├── BranchContext.jsx
-│   └── index.jsx       → AppProviders
-├── hooks/              → usePatients(), useQueue(), dll
-├── layouts/
-│   ├── MainLayout.jsx  → Sidebar + Header + <Outlet />
-│   └── AuthLayout.jsx  → layout login
-├── pages/              → satu folder per modul
-├── routes/
-│   ├── AppRoutes.jsx
-│   └── ProtectedRoute.jsx
-└── utils/              → formatters, helpers
+│   └── axios.js        → base config, interceptors, token injection
+├── lib/                → komponen UI reusable (Svelte)
+├── routes/             → halaman (Svelte routing via vite)
+├── stores/             → Svelte stores (state global)
+├── App.svelte          → root component
+└── main.js             → bootstrap app
 ```
 
 ---
 
 ## 🔑 Konsep Kunci
 
-### 1. State Management — React Context API
+### 1. State Management — Svelte Stores
 
-Tidak ada Zustand, tidak ada TanStack Query. Semua global state via Context:
+```js
+// stores/auth.js
+import { writable } from 'svelte/store'
 
-```jsx
-// context/AuthContext.jsx
-const AuthContext = createContext()
-
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [token, setToken] = useState(localStorage.getItem("token"))
-
-  const login = async (credentials) => { /* ... */ }
-  const logout = () => { /* ... */ }
-
-  return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  )
-}
-
-export const useAuth = () => useContext(AuthContext)
+export const token = writable(localStorage.getItem('token'))
+export const user = writable(null)
 ```
 
-### 2. Data Fetching — Custom Hook + useEffect
-
-```jsx
-// hooks/usePatients.js
-export function usePatients() {
-  const [patients, setPatients] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-
-  useEffect(() => {
-    setLoading(true)
-    patientApi.getAll()
-      .then(setPatients)
-      .catch(setError)
-      .finally(() => setLoading(false))
-  }, [])
-
-  return { patients, loading, error }
-}
-```
-
-### 3. API Layer — Axios per Domain
+### 2. API Layer — Axios
 
 ```js
 // api/axios.js
+import axios from 'axios'
+import { get } from 'svelte/store'
+import { token } from '../stores/auth'
+
 const api = axios.create({ baseURL: import.meta.env.VITE_API_BASE_URL })
 
 api.interceptors.request.use(config => {
-  const token = localStorage.getItem("token")
-  if (token) config.headers.Authorization = `Bearer ${token}`
+  const t = get(token)
+  if (t) config.headers.Authorization = `Bearer ${t}`
   return config
 })
 
 export default api
 ```
 
-```js
-// api/emr/patientApi.js
-import api from "../axios"
-
-export const patientApi = {
-  getAll: (params) => api.get("/emr/patients", { params }).then(r => r.data),
-  getById: (id) => api.get(`/emr/patients/${id}`).then(r => r.data),
-  create: (data) => api.post("/emr/patients", data).then(r => r.data),
-  update: (id, data) => api.put(`/emr/patients/${id}`, data).then(r => r.data),
-}
-```
-
-### 4. Auth Flow
+### 3. Auth Flow
 
 ```
-Login → POST /api/auth/login → dapat JWT token
-     → simpan token di localStorage
-     → set di AuthContext
+Login → POST /api/auth/login → dapat access token + refresh token
+     → simpan access token di localStorage + Svelte store
      → axios interceptor inject ke setiap request
 
-Logout → hapus token dari localStorage + AuthContext
-       → redirect ke /login
+Refresh → POST /api/auth/refresh → dapat access token baru
 
-ProtectedRoute → cek AuthContext.token
-              → kalau null → redirect /login
+Logout → hapus token dari localStorage + store
+       → redirect ke /login
 ```
 
-### 5. Response Format BE
-
-Semua response BE menggunakan `ApiResponse<T>`:
+### 4. Response Format BE
 
 ```json
 {
@@ -189,7 +121,7 @@ Error:
 ```json
 {
   "success": false,
-  "message": "Resource not found",
+  "message": "Unauthorized",
   "data": null
 }
 ```
@@ -198,22 +130,27 @@ Error:
 
 ## 🚀 Environment Variables
 
-### FE (`web-emr/.env`)
+### FE (`mini-helpdesk-web/.env`)
 ```env
 VITE_API_BASE_URL=http://localhost:8080/api
 ```
 
-### BE (`service-emr-api/src/main/resources/application.yml`)
+### BE (`mini-helpdesk-service/src/main/resources/application.yml`)
 ```yaml
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/emr_db
+    url: jdbc:postgresql://localhost:5432/bjb_helpdesk_db
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
 server:
   port: 8080
   servlet:
     context-path: /api
+app:
+  jwt:
+    secret: ${JWT_SECRET:...}
+    access-token-expiration: 900000      # 15 menit
+    refresh-token-expiration: 604800000  # 7 hari
 ```
 
 ---
@@ -223,29 +160,25 @@ server:
 ### Backend
 | Layer | Konvensi | Contoh |
 |-------|----------|--------|
-| Controller | `{Domain}Controller` | `PatientController` |
-| Service | `{Domain}Service` | `PatientService` |
-| Repository | `{Domain}Repository` | `PatientRepository` |
-| Entity | PascalCase | `Patient`, `Visit` |
-| DTO Request | `{Action}{Domain}Request` | `CreatePatientRequest` |
-| DTO Response | `{Domain}Response` | `PatientResponse` |
-| Endpoint | kebab-case | `/emr/patients`, `/emr/nursing-notes` |
+| Controller | `{Domain}Controller` | `AuthController`, `TicketController` |
+| Service | `{Domain}Service` | `AuthService` |
+| Repository | `{Domain}Repository` | `UserRepository` |
+| Entity | PascalCase | `User`, `RefreshToken` |
+| DTO Request | `{Action}{Domain}Request` | `LoginRequest`, `CreateTicketRequest` |
+| DTO Response | `{Domain}Response` | `AuthResponse` |
+| Endpoint | kebab-case | `/auth/login`, `/tickets` |
 
 ### Frontend
 | Entitas | Konvensi | Contoh |
 |---------|----------|--------|
-| Page | PascalCase + `Page` opsional | `PatientListPage.jsx` |
-| Component | PascalCase | `PatientCard.jsx` |
-| Hook | camelCase + `use` prefix | `usePatients.js` |
-| API module | camelCase + `Api` suffix | `patientApi.js` |
-| Context | PascalCase + `Context` | `AuthContext.jsx` |
+| Page/Component | PascalCase | `LoginPage.svelte`, `TicketCard.svelte` |
+| Store | camelCase | `auth.js`, `ticket.js` |
+| API module | camelCase + `Api` suffix | `authApi.js`, `ticketApi.js` |
 
 ---
 
 ## 🚫 Pantangan
 
-- Jangan modifikasi folder `be/` dan `fe/` (referensi lama)
 - Jangan hardcode URL API di FE — pakai `VITE_API_BASE_URL`
 - Jangan expose JPA entity langsung dari controller — selalu pakai DTO
 - Jangan simpan password/secret di kode — pakai environment variable
-- Jangan buat state global baru di luar Context yang sudah ada

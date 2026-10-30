@@ -10,35 +10,28 @@ Fokus utama adalah **belajar melalui diskusi dan pemahaman konsep**. AI menjelas
 
 ---
 
-## 🗂️ Konteks Project: EMR App
+## 🗂️ Konteks Project: Mini Helpdesk
 
-Project ini adalah **Electronic Medical Record (EMR)** — sistem informasi klinik/rumah sakit, dibangun dengan:
+Project ini adalah **Mini Helpdesk — Sistem Tiket Internal BJB**, dibangun dengan:
 
-### Backend (`service-emr-api/`)
+### Backend (`mini-helpdesk-service/`)
 | Teknologi | Versi | Catatan |
 |-----------|-------|---------|
 | Java | 21 | LTS |
 | Spring Boot | 3.3.0 | Framework utama |
 | Spring Data JPA | - | ORM via Hibernate |
 | Spring Security | - | Auth + JWT stateless |
-| PostgreSQL | - | Database utama |
+| PostgreSQL | - | Database utama, db: `bjb_helpdesk_db` |
 | Lombok | - | Boilerplate reduction |
 
-### Frontend (`web-emr/`)
+### Frontend (`mini-helpdesk-web/`)
 | Teknologi | Versi | Catatan |
 |-----------|-------|---------|
-| React | 19 | Library UI utama |
-| React Router DOM | v7 | Routing SPA |
+| Svelte | 4 | Library UI utama |
 | Vite | - | Build tool & dev server |
 | Tailwind CSS | - | Utility-first CSS |
-| React Context API | - | Global state management |
+| Svelte Stores | - | Global state management |
 | Axios | - | HTTP client |
-| React Hook Form + Zod | - | Form & validasi |
-| Sonner | - | Toast notifications |
-
-**Referensi lama (jangan dimodifikasi):**
-- `be/` → Node.js + Express (referensi modul & endpoint)
-- `fe/` → React + Zustand (referensi halaman & komponen)
 
 ---
 
@@ -46,27 +39,26 @@ Project ini adalah **Electronic Medical Record (EMR)** — sistem informasi klin
 
 ### Backend
 ```
-service-emr-api/src/main/java/com/emr/api/
-├── config/             → SecurityConfig, JwtConfig
+mini-helpdesk-service/src/main/java/com/bjb/helpdesk/
+├── config/             → SecurityConfig
 ├── controller/         → @RestController per modul
 ├── dto/                → ApiResponse, request/*, response/*
 ├── exception/          → GlobalExceptionHandler
-├── model/              → @Entity JPA
-├── repository/         → @Repository
-└── service/            → @Service business logic
+├── model/              → User, RefreshToken
+├── repository/         → UserRepository, RefreshTokenRepository
+├── security/           → JwtAuthFilter, JwtService
+└── service/            → AuthService
 ```
 
 ### Frontend
 ```
-web-emr/src/
+mini-helpdesk-web/src/
 ├── api/                → axios instance + fungsi per domain
-├── components/         → ui/ + shared/
-├── context/            → AuthContext, BranchContext, AppProviders
-├── hooks/              → custom hooks data fetching
-├── layouts/            → MainLayout, AuthLayout
-├── pages/              → satu folder per modul
-├── routes/             → AppRoutes, ProtectedRoute
-└── utils/              → helpers, formatters
+├── lib/                → komponen UI reusable (Svelte)
+├── routes/             → halaman (Svelte routing via vite)
+├── stores/             → Svelte stores (state global)
+├── App.svelte          → root component
+└── main.js             → bootstrap app
 ```
 
 ---
@@ -74,15 +66,16 @@ web-emr/src/
 ## 🔑 Pola Utama
 
 ### State Management
-- Global state → React Context API
-- Local state → `useState`
-- Data fetching → custom hook + `useEffect` + axios
+- Global state → Svelte Stores (`writable`)
+- Local state → Svelte reactive variables (`let`)
+- Data fetching → fungsi async di komponen / store
 
 ### Auth Flow
-- Login → `POST /api/auth/login` → dapat JWT
-- Token disimpan di `localStorage`
+- Login → `POST /api/auth/login` → dapat access token + refresh token
+- Token disimpan di `localStorage` + Svelte store
 - Axios interceptor inject token ke setiap request
-- `ProtectedRoute` cek token dari `AuthContext`
+- Refresh → `POST /api/auth/refresh` → dapat access token baru
+- Logout → hapus token dari localStorage + store → redirect `/login`
 
 ### Response Format BE
 ```json
@@ -94,7 +87,6 @@ web-emr/src/
 ## 🚫 1. Strict Restrictions (Pantangan Utama)
 
 - **DO NOT RUN TERMINAL COMMANDS** — Jangan eksekusi perintah CLI (seperti `mvn spring-boot:run`, `npm run dev`, `git commit`, dll.) secara mandiri.
-- **Jangan modifikasi** folder `be/` dan `fe/` (referensi lama).
 
 ---
 
